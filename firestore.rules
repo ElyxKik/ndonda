@@ -1,0 +1,151 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Fonction helper pour vérifier l'authentification
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Fonction helper pour vérifier si l'utilisateur est propriétaire
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Fonction helper pour vérifier si l'utilisateur est admin
+    function isAdmin() {
+      return isSignedIn() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+    
+    // Collection users
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isOwner(userId) || isAdmin();
+    }
+    
+    // Collection projects
+    match /projects/{projectId} {
+      // Permettre la lecture à tous les utilisateurs authentifiés
+      allow read: if isSignedIn();
+      
+      // Permettre la création uniquement si le userId correspond
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      
+      // Permettre la modification/suppression uniquement au propriétaire ou admin
+      allow update, delete: if isSignedIn() && 
+        (resource.data.userId == request.auth.uid || isAdmin());
+    }
+    
+    // Collection incidents
+    match /incidents/{incidentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Collection equipements
+    match /equipements/{equipementId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Collection dechets
+    match /dechets/{dechetId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Collection sensibilisations
+    match /sensibilisations/{sensibilisationId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Collection contentieux
+    match /contentieux/{contentieuxId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Collection personnel
+    match /personnel/{personnelId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Collection personnelV2 (nouvelle)
+    match /personnelV2/{personnelId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Collection evenementChantier (nouvelle)
+    match /evenementChantier/{evenementId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Sous-collections des projets
+    match /projects/{projectId}/{subcollection}/{documentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Collection project_stats (lecture seule pour les utilisateurs, écriture pour les admins)
+    match /project_stats/{projectId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+    
+    // Collection photo_reports
+    match /photo_reports/{photoId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Collection activity_reports
+    match /activity_reports/{activityId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Collection supervision_reports
+    match /supervision_reports/{supervisionId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+    
+    // Collection consultant_reports
+    match /consultant_reports/{consultantId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn();
+      allow update, delete: if isSignedIn() && 
+        (resource.data.createdBy == request.auth.uid || isAdmin());
+    }
+  }
+}

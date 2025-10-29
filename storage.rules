@@ -1,0 +1,52 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Fonction helper pour vérifier l'authentification
+    function isSignedIn() {
+      return request.auth != null;
+    }
+    
+    // Photos de profil utilisateur
+    match /users/{userId}/profile.jpg {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn() && request.auth.uid == userId;
+    }
+    
+    // Documents et images de projets
+    match /projects/{projectId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    // Photos d'incidents
+    match /incidents/{projectId}/{incidentId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    // Photos d'équipements
+    match /equipements/{projectId}/{equipementId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    // Photos de déchets
+    match /dechets/{projectId}/{dechetId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    // Photos de sensibilisations
+    match /sensibilisations/{projectId}/{sensibilisationId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+    
+    // Documents de contentieux
+    match /contentieux/{projectId}/{contentieuxId}/{allPaths=**} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+  }
+}
