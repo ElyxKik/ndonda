@@ -1,0 +1,200 @@
+================================================================================
+🏷️ GUIDE - SYSTÈME DE TAGS POUR LA RECHERCHE INTELLIGENTE
+================================================================================
+
+## 📋 RÉSUMÉ
+
+Le système d'IA utilise maintenant les TAGS pour trouver les documents pertinents
+dans Firestore. Chaque document doit avoir un champ "tags" pour fonctionner
+correctement.
+
+================================================================================
+🔍 COMMENT ÇA MARCHE
+================================================================================
+
+1. L'utilisateur pose une question
+   └─ "Donne moi la liste de projet à Ngandajika"
+
+2. L'IA extrait les mots-clés
+   └─ ["donne", "liste", "projet", "ngandajika"]
+
+3. L'IA recherche dans Firestore
+   └─ Cherche les documents avec des TAGS correspondants
+
+4. L'IA envoie UNIQUEMENT les documents pertinents à Gemini
+   └─ Gemini génère une réponse naturelle
+
+5. L'utilisateur reçoit une réponse conversationnelle
+   └─ "Voici les projets à Ngandajika..."
+
+================================================================================
+📝 STRUCTURE DES DOCUMENTS
+================================================================================
+
+Chaque document dans Firestore doit avoir cette structure:
+
+{
+  "nom": "PDL145 TERRITOIRE",
+  "localisation": "Ngandajika",
+  "maitre_oeuvre": "Min Infrastructure",
+  "montant": 500000,
+  "description": "Renforcement des équipements territoriaux...",
+  "tags": [
+    "projet",
+    "pdl145",
+    "ngandajika",
+    "infrastructure",
+    "territoire",
+    "min infrastructure"
+  ],
+  "createdAt": Timestamp,
+  "updatedAt": Timestamp
+}
+
+================================================================================
+🏷️ BONNES PRATIQUES POUR LES TAGS
+================================================================================
+
+✅ À FAIRE:
+- Ajouter des tags en minuscules
+- Inclure le nom du projet (ex: "pdl145")
+- Inclure la localisation (ex: "ngandajika")
+- Inclure le type (ex: "projet", "infrastructure")
+- Inclure le ministère/organisation (ex: "min infrastructure")
+- Ajouter des variantes (ex: "ngandajika", "ngandajika-kasai")
+
+❌ À ÉVITER:
+- Tags trop génériques ("data", "info")
+- Tags avec des caractères spéciaux
+- Tags vides ou null
+- Tags en majuscules (utiliser minuscules)
+
+================================================================================
+📚 EXEMPLES DE TAGS PAR COLLECTION
+================================================================================
+
+### PROJETS:
+{
+  "nom": "Réhabilitation Route Kinshasa-Matadi",
+  "tags": [
+    "projet",
+    "route",
+    "kinshasa",
+    "matadi",
+    "infrastructure",
+    "transport",
+    "min infrastructure",
+    "rehabilitation"
+  ]
+}
+
+### ENTREPRISES:
+{
+  "nom": "SARL Construction Plus",
+  "tags": [
+    "entreprise",
+    "construction",
+    "btp",
+    "sarl",
+    "kinshasa",
+    "construction plus"
+  ]
+}
+
+### MINISTÈRES:
+{
+  "nom": "Ministère des Infrastructures",
+  "tags": [
+    "ministere",
+    "infrastructure",
+    "gouvernement",
+    "min infrastructure",
+    "travaux publics"
+  ]
+}
+
+================================================================================
+🔧 COMMENT AJOUTER LES TAGS
+================================================================================
+
+### Option 1: Manuellement dans Firebase Console
+1. Ouvrir Firebase Console
+2. Aller à Firestore
+3. Ouvrir la collection (ex: "projects")
+4. Éditer un document
+5. Ajouter un champ "tags" (type: Array)
+6. Ajouter les tags pertinents
+
+### Option 2: Via une Cloud Function
+```dart
+Future<void> addTagsToProject(String projectId, List<String> tags) async {
+  await FirebaseFirestore.instance
+      .collection('projects')
+      .doc(projectId)
+      .update({'tags': tags});
+}
+```
+
+### Option 3: Lors de la création d'un document
+```dart
+await FirebaseFirestore.instance.collection('projects').add({
+  'nom': 'Mon Projet',
+  'localisation': 'Kinshasa',
+  'tags': ['projet', 'kinshasa', 'infrastructure'],
+  'createdAt': FieldValue.serverTimestamp(),
+});
+```
+
+================================================================================
+🧪 TESTER LE SYSTÈME
+================================================================================
+
+1. Assurez-vous que vos documents ont des TAGS
+2. Ouvrez l'application
+3. Allez au menu "IA - Données Firebase"
+4. Posez une question avec des mots-clés
+5. Vérifiez les logs pour voir:
+   - Les mots-clés extraits
+   - Les documents trouvés
+   - Le contexte envoyé à Gemini
+
+Exemple de question:
+- "Quels projets à Ngandajika?"
+- "Parle-moi du PDL145"
+- "Qui est le maître d'œuvre du projet infrastructure?"
+
+================================================================================
+📊 RÉSULTAT ATTENDU
+================================================================================
+
+Question: "Quels projets à Ngandajika?"
+
+Logs:
+✓ Mots-clés extraits: ["quels", "projets", "ngandajika"]
+✓ Documents pertinents trouvés: 2 projets
+✓ Contexte construit avec 2 projets
+
+Réponse Gemini:
+"À Ngandajika, il y a 2 projets:
+
+1. PDL145 TERRITOIRE - Piloté par le Ministère des Infrastructures, 
+   avec un financement de 500 000 USD.
+
+2. [Autre projet] - ..."
+
+================================================================================
+⚠️ DÉPANNAGE
+================================================================================
+
+❌ PROBLÈME: "Je n'ai pas cette information"
+✅ SOLUTION: Vérifiez que les documents ont des TAGS pertinents
+
+❌ PROBLÈME: Aucun projet trouvé
+✅ SOLUTION: Les mots-clés ne correspondent pas aux TAGS
+           Vérifiez les logs pour voir les mots-clés extraits
+
+❌ PROBLÈME: Mauvais projets trouvés
+✅ SOLUTION: Ajoutez des TAGS plus spécifiques
+           Évitez les tags trop génériques
+
+================================================================================

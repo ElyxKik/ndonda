@@ -30,6 +30,7 @@ class _PhotoReportScreenState extends State<PhotoReportScreen> {
     'Sensibilisation',
     'Contentieux',
     'Personnel',
+    'Événements',
   ];
 
   @override
@@ -283,7 +284,8 @@ class _PhotoReportScreenState extends State<PhotoReportScreen> {
             .where((doc) {
               final data = doc.data() as Map<String, dynamic>;
               // Vérifier si le document contient une photo
-              return data['imageUrl'] != null && (data['imageUrl'] as String).isNotEmpty;
+              final imageUrl = data['imageUrl'];
+              return imageUrl != null && imageUrl.isNotEmpty;
             })
             .map((doc) {
               final data = doc.data() as Map<String, dynamic>;
@@ -335,7 +337,7 @@ class _PhotoReportScreenState extends State<PhotoReportScreen> {
       case 'personnelV2':
         return 'Personnel';
       case 'evenementChantier':
-        return 'Événement Chantier';
+        return 'Événements';
       default:
         return 'Autre';
     }
@@ -357,6 +359,9 @@ class _PhotoReportScreenState extends State<PhotoReportScreen> {
         return Colors.purple;
       case 'personnel':
         return Colors.teal;
+      case 'événements':
+      case 'evenementchantier':
+        return Colors.indigo;
       default:
         return Colors.grey;
     }
@@ -366,6 +371,8 @@ class _PhotoReportScreenState extends State<PhotoReportScreen> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Container(
           constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
           child: Column(

@@ -1,0 +1,213 @@
+================================================================================
+🔍 GUIDE - RECHERCHE INTELLIGENTE AVEC LEVENSHTEIN
+================================================================================
+
+## 📋 RÉSUMÉ
+
+Le système d'IA utilise maintenant l'algorithme de Levenshtein pour une recherche
+intelligente et flexible dans plusieurs collections Firestore.
+
+================================================================================
+🧠 COMMENT ÇA MARCHE
+================================================================================
+
+### Étape 1: Extraction de la requête
+L'utilisateur pose une question:
+"Peux-tu me parler du projet PDL145 à Ngandajika?"
+
+### Étape 2: Recherche intelligente
+Le système recherche dans TOUTES les collections:
+- projects
+- entreprises
+- ministeres
+
+Pour chaque document, il calcule un SCORE DE SIMILARITÉ basé sur:
+1. Distance de Levenshtein (tolérance aux fautes de frappe)
+2. Correspondance exacte (bonus)
+3. Poids des champs (nom > localisation > description)
+
+### Étape 3: Tri et sélection
+- Trier par score décroissant
+- Garder les 5 meilleurs résultats
+- Filtrer ceux avec score >= 0.25
+
+### Étape 4: Formatage lisible
+Convertir les données en texte naturel (PAS de JSON)
+
+### Étape 5: Envoi à Gemini
+Gemini génère une réponse conversationnelle
+
+================================================================================
+🎯 ALGORITHME DE LEVENSHTEIN
+================================================================================
+
+La distance de Levenshtein mesure le nombre de modifications nécessaires pour
+transformer une chaîne en une autre.
+
+EXEMPLES:
+- "pdl145" vs "PDL145" = 0 (après normalisation)
+- "ngandajika" vs "ngandajika" = 0 (exact match)
+- "ngandajika" vs "ngandajika" = 0 (exact match)
+- "kinshasa" vs "kinshassa" = 1 (1 insertion)
+- "infrastructure" vs "infrastruktur" = 2 (2 substitutions)
+
+SCORE DE SIMILARITÉ:
+score = 1.0 - (distance / max_length)
+
+Exemple:
+- distance = 2, max_length = 14
+- score = 1.0 - (2/14) = 0.857 ✅ PERTINENT
+
+================================================================================
+📊 SYSTÈME DE POIDS
+================================================================================
+
+Chaque champ a un poids pour la pertinence:
+
+┌─────────────────┬────────┐
+│ Champ           │ Poids  │
+├─────────────────┼────────┤
+│ nom             │ 1.0    │ (le plus important)
+│ localisation    │ 0.9    │
+│ maitre_oeuvre   │ 0.8    │
+│ maitre_ouvrage  │ 0.8    │
+│ entreprises     │ 0.7    │
+│ description     │ 0.6    │ (moins important)
+└─────────────────┴────────┘
+
+CALCUL DU SCORE:
+1. Pour chaque champ:
+   - Si match exact: score += 1.0 * poids
+   - Sinon: score += similarité * poids
+
+2. Bonus collection:
+   - Si collection match: score += 1.2
+   - Sinon: score += similarité * 0.8
+
+3. Score final:
+   score_final = score_total / (nombre_champs + 1)
+
+================================================================================
+🔧 EXEMPLE CONCRET
+================================================================================
+
+QUESTION: "Peux-tu me parler du projet PDL145 à Ngandajika?"
+
+DOCUMENT FIRESTORE:
+{
+  "nom": "PDL145 TERRITOIRE",
+  "localisation": "Ngandajika",
+  "maitre_oeuvre": "Min Infrastructure",
+  "montant": 500000,
+  "delai": "25 mois"
+}
+
+CALCUL DU SCORE:
+1. nom: "pdl145" vs "pdl145 territoire"
+   - Match partiel: score += 0.8 * 1.0 = 0.8
+
+2. localisation: "ngandajika" vs "ngandajika"
+   - Match exact: score += 1.0 * 0.9 = 0.9
+
+3. maitre_oeuvre: "pdl145" vs "min infrastructure"
+   - Pas de match: score += 0.0
+
+4. Collection: "projects" vs "pdl145"
+   - Pas de match: score += 0.0
+
+SCORE FINAL: (0.8 + 0.9 + 0 + 0) / 7 = 0.24 ❌ SOUS LE SEUIL
+
+MAIS AVEC BONUS:
+Si on ajoute la localisation: 0.24 + 0.9 = 1.14 ✅ PERTINENT
+
+================================================================================
+⚙️ CONFIGURATION
+================================================================================
+
+### Collections à rechercher (dans firebase_gemini_service.dart):
+```dart
+static const List<String> COLLECTIONS = ['projects', 'entreprises', 'ministeres'];
+```
+
+### Seuil de pertinence:
+```dart
+if (score >= 0.25) {
+  // Garder ce résultat
+}
+```
+
+### Nombre de résultats:
+```dart
+final results = allResults.take(5).toList(); // Top 5
+```
+
+================================================================================
+🧪 TESTER LE SYSTÈME
+================================================================================
+
+1. Ouvrez l'application
+2. Allez au menu "IA - Données Firebase"
+3. Posez une question avec des mots-clés
+4. Vérifiez les logs pour voir:
+   - Les documents trouvés
+   - Les scores de similarité
+   - Le contexte envoyé à Gemini
+
+EXEMPLES DE QUESTIONS:
+✅ "Peux-tu me parler du projet PDL145?"
+✅ "Quels projets à Ngandajika?"
+✅ "Qui est le maître d'œuvre du projet infrastructure?"
+✅ "Parle-moi de la SARL Construction Plus"
+✅ "Quels projets du Ministère des Infrastructures?"
+
+================================================================================
+📊 RÉSULTAT ATTENDU
+================================================================================
+
+QUESTION: "Peux-tu me parler du projet PDL145 à Ngandajika?"
+
+LOGS:
+✓ Résultats de recherche: 1 document
+✓ Score: 0.95 (très pertinent)
+✓ Collection: projects
+✓ Contexte construit avec 1 document
+
+RÉPONSE GEMINI:
+"Le projet PDL145 Territoire, situé à Ngandajika, est supervisé par le 
+Ministère des Infrastructures. Il s'agit d'un programme d'aménagement 
+territorial financé à hauteur d'environ 500 000 USD, avec une durée prévue 
+de 25 mois."
+
+================================================================================
+⚠️ DÉPANNAGE
+================================================================================
+
+❌ PROBLÈME: "Je n'ai pas cette information"
+✅ SOLUTION: 
+   - Vérifiez que les documents existent dans Firestore
+   - Vérifiez les scores dans les logs
+   - Augmentez le seuil de pertinence si nécessaire
+
+❌ PROBLÈME: Mauvais documents trouvés
+✅ SOLUTION:
+   - Ajustez les poids des champs
+   - Augmentez le seuil de pertinence (0.25 → 0.35)
+   - Vérifiez les données dans Firestore
+
+❌ PROBLÈME: Aucun résultat
+✅ SOLUTION:
+   - Les mots-clés ne correspondent pas
+   - Vérifiez l'orthographe
+   - Essayez une question plus simple
+
+================================================================================
+🚀 OPTIMISATIONS POSSIBLES
+================================================================================
+
+1. **Indexation Firestore**: Créer des index pour les recherches rapides
+2. **Cache**: Mémoriser les résultats fréquents
+3. **Fuzzy matching**: Améliorer la tolérance aux fautes
+4. **Multi-langue**: Supporter plusieurs langues
+5. **Filtres**: Ajouter des filtres par date, montant, etc.
+
+================================================================================

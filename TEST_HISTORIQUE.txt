@@ -1,0 +1,175 @@
+=== GUIDE DE TEST DU SYSTÈME D'HISTORIQUE IA ===
+
+## ✅ Déploiement Complété
+
+### 1. Règles Firestore
+✅ Déployées avec succès
+- Collection `ai_conversations` avec permissions par utilisateur
+- Chaque utilisateur ne voit que ses propres conversations
+
+### 2. Indexes Firestore
+✅ Déployés avec succès
+- Index composite pour userId + type + updatedAt
+- Index composite pour userId + updatedAt
+- Les indexes peuvent prendre 5-10 minutes à être construits
+
+### 3. Optimisation de Requête
+✅ Implémentée
+- Requête de base: userId + tri par updatedAt (pas d'index composite requis)
+- Filtrage par type en mémoire (évite le besoin d'index composite immédiatement)
+
+## 🧪 Procédure de Test
+
+### Étape 1: Lancer l'application
+```bash
+flutter run
+```
+
+### Étape 2: Se connecter
+- Utiliser un compte Firebase existant
+- Vérifier que l'utilisateur est authentifié
+
+### Étape 3: Tester le Chat Simple (IA - Chat Simple)
+1. Accéder à: Menu → IA - Chat Simple
+2. Envoyer un message (ex: "Bonjour")
+3. Attendre la réponse de l'IA
+4. Envoyer un deuxième message
+5. Cliquer sur le bouton historique (icône 🕐)
+6. Vérifier que la conversation apparaît dans la liste
+7. Cliquer sur la conversation pour voir les détails
+8. Vérifier que tous les messages sont affichés
+
+### Étape 4: Tester le Chat Firebase (IA - Données Firebase)
+1. Accéder à: Menu → IA - Données Firebase
+2. Envoyer un message (ex: "Quels sont les projets?")
+3. Attendre la réponse de l'IA
+4. Envoyer un deuxième message
+5. Cliquer sur le bouton historique (icône 🕐)
+6. Vérifier que la conversation apparaît dans la liste
+7. Cliquer sur la conversation pour voir les détails
+8. Vérifier que tous les messages sont affichés
+
+### Étape 5: Tester la Suppression
+1. Dans le modal historique, cliquer sur le menu (⋮) d'une conversation
+2. Sélectionner "Supprimer"
+3. Confirmer la suppression
+4. Vérifier que la conversation disparaît de la liste
+
+### Étape 6: Vérifier Firestore
+1. Aller sur: https://console.firebase.google.com
+2. Sélectionner le projet: ndonda-verte-62700
+3. Aller à: Firestore Database → Collections
+4. Vérifier la collection `ai_conversations`
+5. Vérifier que les documents contiennent:
+   - id (UUID)
+   - userId (UID de l'utilisateur)
+   - type ('simple' ou 'firebase')
+   - title (titre généré du premier message)
+   - messages (array avec tous les messages)
+   - createdAt (timestamp)
+   - updatedAt (timestamp)
+   - messageCount (nombre de messages)
+
+## 📊 Logs Attendus
+
+### Lors de l'envoi du premier message:
+```
+✅ Conversation créée: [UUID]
+✅ Message ajouté à la conversation
+```
+
+### Lors de l'ouverture du modal historique:
+```
+✅ Historique chargé: [nombre] messages
+```
+
+### Lors de la suppression:
+```
+✅ Conversation supprimée
+```
+
+## ⚠️ Problèmes Possibles et Solutions
+
+### Problème 1: "Erreur récupération conversations"
+**Cause**: Index Firestore pas encore construit
+**Solution**: Attendre 5-10 minutes que l'index se construise
+**Vérification**: Aller sur Firebase Console → Firestore → Indexes
+
+### Problème 2: "Utilisateur non authentifié"
+**Cause**: L'utilisateur n'est pas connecté
+**Solution**: Se connecter d'abord avant d'accéder aux pages IA
+
+### Problème 3: Les messages ne s'affichent pas dans l'historique
+**Cause**: Les messages ne sont pas sauvegardés
+**Vérification**: 
+- Vérifier les logs pour les messages d'erreur
+- Vérifier que Firestore est accessible
+- Vérifier les permissions Firestore
+
+### Problème 4: Modal historique vide
+**Cause**: Pas de conversations créées encore
+**Solution**: Envoyer des messages dans le chat d'abord
+
+## 🔍 Vérification des Données
+
+### Dans Firestore Console:
+1. Aller à: Firestore Database → Collections
+2. Sélectionner: ai_conversations
+3. Vérifier chaque document:
+   - Doit avoir userId = UID de l'utilisateur connecté
+   - Doit avoir type = 'simple' ou 'firebase'
+   - Doit avoir messages array avec au moins 2 éléments
+   - Doit avoir messageCount = nombre de messages
+
+### Exemple de document:
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "userId": "abc123def456",
+  "type": "simple",
+  "title": "Bonjour",
+  "messages": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "role": "user",
+      "content": "Bonjour",
+      "timestamp": "2025-11-12T13:30:00.000Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "role": "assistant",
+      "content": "Bonjour! Comment puis-je vous aider?",
+      "timestamp": "2025-11-12T13:30:05.000Z"
+    }
+  ],
+  "createdAt": "2025-11-12T13:30:00.000Z",
+  "updatedAt": "2025-11-12T13:30:05.000Z",
+  "messageCount": 2
+}
+```
+
+## ✅ Checklist de Validation
+
+- [ ] Règles Firestore déployées
+- [ ] Indexes Firestore déployés
+- [ ] Application lancée sans erreur
+- [ ] Utilisateur connecté
+- [ ] Premier message envoyé dans Chat Simple
+- [ ] Conversation créée dans Firestore
+- [ ] Bouton historique affiche la conversation
+- [ ] Page de détail affiche tous les messages
+- [ ] Suppression fonctionne
+- [ ] Premier message envoyé dans Chat Firebase
+- [ ] Conversation créée dans Firestore
+- [ ] Bouton historique affiche la conversation
+- [ ] Page de détail affiche tous les messages
+- [ ] Filtrage par type fonctionne
+- [ ] Permissions Firestore correctes (utilisateur ne voit que ses conversations)
+
+## 📝 Notes
+
+- Les indexes peuvent prendre 5-10 minutes à être construits
+- Le filtrage par type se fait en mémoire pour éviter les problèmes d'index
+- Chaque utilisateur ne voit que ses propres conversations
+- Les conversations sont triées par date de modification (plus récente en premier)
+- Le titre est généré automatiquement du premier message

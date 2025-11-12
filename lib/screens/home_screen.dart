@@ -495,8 +495,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildModulesGrid(BuildContext context, AppProvider provider) {
-    // Limiter à 4 modules sur la page d'accueil
-    final modulesToShow = AppModules.modules.take(4).toList();
+    // Afficher tous les modules sur la page d'accueil
+    final modulesToShow = AppModules.modules;
     
     return GridView.count(
       shrinkWrap: true,

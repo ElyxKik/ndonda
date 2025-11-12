@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:provider/provider.dart';
 import '../models/hse_indicator.dart';
 import '../utils/constants.dart';
+import '../providers/app_provider.dart';
 import 'hse_indicators_screen.dart';
+import 'hse_indicator_detail_screen.dart';
 
 class HSEIndicatorsListScreen extends StatefulWidget {
   final String projectId;
@@ -98,20 +101,30 @@ class _HSEIndicatorsListScreenState extends State<HSEIndicatorsListScreen> {
           );
         },
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => HSEIndicatorsScreen(
-                projectId: widget.projectId,
-              ),
-            ),
+      floatingActionButton: Consumer<AppProvider>(
+        builder: (context, provider, child) {
+          final canCreate = provider.canPerformAction('create');
+          
+          if (!canCreate) {
+            return const SizedBox.shrink();
+          }
+          
+          return FloatingActionButton.extended(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => HSEIndicatorsScreen(
+                    projectId: widget.projectId,
+                  ),
+                ),
+              );
+            },
+            backgroundColor: AppColors.primary,
+            icon: const Icon(Icons.add),
+            label: const Text('Nouveau Suivi'),
           );
         },
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add),
-        label: const Text('Nouveau Suivi'),
       ),
     );
   }
@@ -167,6 +180,30 @@ class _HSEIndicatorsListScreenState extends State<HSEIndicatorsListScreen> {
                         ),
                       ),
                     ],
+                  ),
+                ),
+                ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => HSEIndicatorDetailScreen(
+                          indicatorId: indicator.id,
+                          projectId: widget.projectId,
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.visibility, size: 16),
+                  label: const Text('Voir'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.white,
+                    foregroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    textStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ],

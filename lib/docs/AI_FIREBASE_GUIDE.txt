@@ -1,0 +1,218 @@
+================================================================================
+🤖 ASSISTANT IA AVEC FIREBASE - GUIDE COMPLET
+================================================================================
+
+## 📋 RÉSUMÉ
+
+Vous avez maintenant deux assistants IA intégrés dans ENVIROX:
+
+1. **IA - Chat Simple** (AIChatScreen)
+   - Chat standard avec Gemini
+   - Pas d'accès aux données Firebase
+   - Idéal pour des questions générales
+
+2. **IA - Données Firebase** (AIFirebaseChatScreen) ⭐ RECOMMANDÉ
+   - Récupère automatiquement vos données utilisateur depuis Firebase
+   - Utilise ces données comme contexte pour les réponses
+   - Répond UNIQUEMENT avec les informations disponibles
+   - Idéal pour des questions spécifiques à votre compte
+
+================================================================================
+🏗️ ARCHITECTURE
+================================================================================
+
+### Services:
+- `lib/services/gemini_service.dart`
+  └─ Service simple pour Gemini (chat basique)
+
+- `lib/services/firebase_gemini_service.dart` ⭐ NOUVEAU
+  └─ Service avancé qui combine Firebase + Gemini
+  └─ Récupère les données utilisateur
+  └─ Filtre les données sensibles
+  └─ Construit un contexte pour Gemini
+
+### Écrans:
+- `lib/screens/ai_chat_screen.dart`
+  └─ Interface simple de chat
+
+- `lib/screens/ai_firebase_chat_screen.dart` ⭐ NOUVEAU
+  └─ Interface de chat avec données Firebase
+  └─ Affiche les erreurs de configuration
+
+### Configuration:
+- `lib/config/gemini_config.dart`
+  └─ Clé API et modèle Gemini
+  └─ Validation de la configuration
+
+================================================================================
+🔐 SÉCURITÉ - DONNÉES FILTRÉES
+================================================================================
+
+Les champs SENSIBLES sont automatiquement SUPPRIMÉS avant d'être envoyés à Gemini:
+
+❌ SUPPRIMÉS:
+  - password
+  - apiKey
+  - token
+  - secret
+  - fcmToken
+  - refreshToken
+
+✅ CONSERVÉS:
+  - displayName
+  - email
+  - role
+  - organization
+  - createdAt
+  - updatedAt
+  - Autres données non sensibles
+
+================================================================================
+💡 FONCTIONNEMENT - FIREBASE + GEMINI
+================================================================================
+
+ÉTAPE 1: L'utilisateur pose une question
+  └─ "Quel est mon rôle?"
+
+ÉTAPE 2: Le service récupère les données Firebase
+  └─ Récupère le document users/{userId}
+  └─ Filtre les données sensibles
+  └─ Formate les données
+
+ÉTAPE 3: Construction du contexte
+  └─ Contexte = "Voici vos données: {données filtrées}"
+  └─ Question = "Quel est mon rôle?"
+
+ÉTAPE 4: Envoi à Gemini
+  └─ Prompt complet = Contexte + Question
+
+ÉTAPE 5: Réponse de Gemini
+  └─ Gemini répond UNIQUEMENT avec les données fournies
+  └─ Si l'info n'existe pas: "Je n'ai pas cette information"
+
+ÉTAPE 6: Sauvegarde (optionnel)
+  └─ La réponse est sauvegardée dans Firebase
+  └─ Champ: users/{userId}/lastAIInteraction
+
+================================================================================
+🚀 UTILISATION
+================================================================================
+
+### Menu Hamburger:
+1. Cliquez sur l'icône ☰ (menu) en haut à droite
+2. Sélectionnez "IA - Données Firebase"
+3. Posez votre question
+
+### Exemples de questions:
+✅ "Quel est mon rôle?"
+✅ "Quand ai-je créé mon compte?"
+✅ "Quand me suis-je connecté pour la dernière fois?"
+✅ "Quelles sont mes informations?"
+
+### Réponses attendues:
+- Si l'info existe: Réponse directe avec les données
+- Si l'info n'existe pas: "Je n'ai pas cette information"
+- En cas d'erreur: Message d'erreur explicite
+
+================================================================================
+⚙️ CONFIGURATION REQUISE
+================================================================================
+
+1. Clé API Gemini (déjà configurée)
+   └─ Fichier: lib/config/gemini_config.dart
+   └─ Modèle: gemini-2.5-flash-lite (gratuit)
+
+2. Firebase (déjà configuré)
+   └─ Authentification: ✅
+   └─ Firestore: ✅
+   └─ Collection "users": ✅
+
+3. Dépendances (déjà ajoutées):
+   └─ google_generative_ai: ^0.4.2
+   └─ cloud_firestore: ^5.4.4
+   └─ firebase_auth: ^5.3.1
+
+================================================================================
+🔧 OPTIMISATION POUR LE FREE TIER
+================================================================================
+
+Le système est optimisé pour le plan gratuit de Gemini:
+
+✅ Modèle économique: gemini-2.5-flash-lite
+✅ Contexte limité: ~500 caractères max
+✅ Pas de stockage d'historique long
+✅ Filtrage des données sensibles
+✅ Gestion des erreurs gracieuse
+
+Coût estimé: ~0.01 USD par 1000 requêtes
+
+================================================================================
+📊 DONNÉES DISPONIBLES
+================================================================================
+
+Chaque utilisateur a accès à ses propres données:
+
+{
+  "displayName": "Nom de l'utilisateur",
+  "email": "email@example.com",
+  "role": "admin|consultant|visitor",
+  "organization": "Nom de l'organisation",
+  "createdAt": "Timestamp",
+  "updatedAt": "Timestamp",
+  "lastLoginAt": "Timestamp",
+  "lastAIInteraction": {
+    "question": "...",
+    "response": "...",
+    "timestamp": "..."
+  }
+}
+
+================================================================================
+🐛 DÉPANNAGE
+================================================================================
+
+❌ ERREUR: "Clé API Gemini non configurée"
+✅ SOLUTION: Vérifiez lib/config/gemini_config.dart
+           Assurez-vous que apiKey commence par "AIza"
+
+❌ ERREUR: "Utilisateur non authentifié"
+✅ SOLUTION: Connectez-vous d'abord à l'application
+
+❌ ERREUR: "Document utilisateur non trouvé"
+✅ SOLUTION: Votre profil n'existe pas dans Firebase
+           Contactez un administrateur
+
+❌ ERREUR: "Je n'ai pas cette information"
+✅ SOLUTION: C'est normal! L'assistant ne peut répondre
+           que si l'info existe dans vos données
+
+================================================================================
+📚 FICHIERS CLÉS
+================================================================================
+
+Services:
+  lib/services/firebase_gemini_service.dart (188 lignes)
+  └─ Logique principale d'intégration
+
+Écrans:
+  lib/screens/ai_firebase_chat_screen.dart (430 lignes)
+  └─ Interface utilisateur
+
+Configuration:
+  lib/config/gemini_config.dart (21 lignes)
+  └─ Paramètres API
+
+Menu:
+  lib/screens/home_screen_firebase.dart
+  └─ Intégration au menu hamburger
+
+================================================================================
+✨ PROCHAINES ÉTAPES
+================================================================================
+
+1. Testez l'assistant avec des questions simples
+2. Vérifiez que les données sont correctes
+3. Explorez les possibilités d'intégration
+4. Signalez les bugs ou améliorations
+
+================================================================================

@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/supervision_report.dart';
 import '../../utils/constants.dart';
 import 'package:intl/intl.dart';
+import 'supervision_report_form.dart';
 
 /// Écran Rapport de Supervision
 class SupervisionReportScreen extends StatefulWidget {
@@ -276,6 +277,8 @@ class _SupervisionReportScreenState extends State<SupervisionReportScreen> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Container(
           constraints: const BoxConstraints(maxWidth: 900, maxHeight: 700),
           child: Column(
@@ -287,8 +290,25 @@ class _SupervisionReportScreenState extends State<SupervisionReportScreen> {
                 automaticallyImplyLeading: false,
                 actions: [
                   IconButton(
+                    icon: const Icon(Icons.edit),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _editReport(report);
+                    },
+                    tooltip: 'Modifier',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _deleteReport(report);
+                    },
+                    tooltip: 'Supprimer',
+                  ),
+                  IconButton(
                     icon: const Icon(Icons.download),
                     onPressed: () => _exportReport(report),
+                    tooltip: 'Exporter',
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -428,10 +448,9 @@ class _SupervisionReportScreenState extends State<SupervisionReportScreen> {
   }
 
   void _createNewReport() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Fonctionnalité de création en cours de développement'),
-        backgroundColor: AppColors.primary,
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) => SupervisionReportForm(projectId: widget.projectId),
       ),
     );
   }
@@ -443,5 +462,55 @@ class _SupervisionReportScreenState extends State<SupervisionReportScreen> {
         backgroundColor: AppColors.primary,
       ),
     );
+  }
+
+  void _editReport(SupervisionReport report) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Édition du rapport en cours de développement'),
+        backgroundColor: AppColors.primary,
+      ),
+    );
+  }
+
+  Future<void> _deleteReport(SupervisionReport report) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmer la suppression'),
+        content: const Text('Êtes-vous sûr de vouloir supprimer ce rapport ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _firestore.collection('supervisionReports').doc(report.id).delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Rapport supprimé'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
   }
 }

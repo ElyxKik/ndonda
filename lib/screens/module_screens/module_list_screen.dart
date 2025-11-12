@@ -88,6 +88,8 @@ class _ModuleListScreenState extends State<ModuleListScreen> {
         return 'contentieux';
       case 'plaintes':
         return 'plaintes';
+      case 'mise_en_oeuvre_pges':
+        return 'mise_en_oeuvre_pges';
       default:
         return 'evenements';
     }
@@ -163,6 +165,11 @@ class _ModuleListScreenState extends State<ModuleListScreen> {
           plainte: item,
         );
         break;
+      case 'mise_en_oeuvre_pges':
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Formulaire Mise en oeuvre PGES en développement')),
+        );
+        return;
       default:
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Formulaire en développement')),

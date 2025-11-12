@@ -17,10 +17,12 @@ import 'firebase_forms/sensibilisation_firebase_form.dart';
 import 'firebase_forms/contentieux_firebase_form.dart';
 import 'firebase_forms/evenement_chantier_firebase_form.dart';
 import 'firebase_forms/personnel_firebase_form.dart';
+import 'firebase_forms/mise_en_oeuvre_pges_form_v2.dart';
+import 'firebase_forms/audit_firebase_form.dart';
 import 'reports/photo_report_screen.dart';
 import 'reports/activity_report_screen.dart';
-import 'reports/supervision_report_screen.dart';
-import 'reports/consultant_report_screen.dart';
+import 'ai_chat_screen.dart';
+import 'ai_firebase_chat_screen.dart';
 
 class HomeScreenFirebase extends StatefulWidget {
   const HomeScreenFirebase({super.key});
@@ -30,17 +32,27 @@ class HomeScreenFirebase extends StatefulWidget {
 }
 
 class _HomeScreenFirebaseState extends State<HomeScreenFirebase> {
+  bool _roleLoaded = false;
+
   @override
   void initState() {
     super.initState();
-    _loadUserRole();
+    // Charger le rôle après le premier frame
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadUserRole();
+    });
   }
 
   Future<void> _loadUserRole() async {
+    if (_roleLoaded) return;
+    
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       final provider = Provider.of<AppProvider>(context, listen: false);
       await provider.loadUserRole(user.uid);
+      setState(() {
+        _roleLoaded = true;
+      });
     }
   }
 
@@ -102,7 +114,7 @@ class _HomeScreenFirebaseState extends State<HomeScreenFirebase> {
                     ),
                   ),
                   Text(
-                    'Gestion Environnementale',
+                    'Sauvegarde Environnementale',
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 11,
@@ -132,6 +144,20 @@ class _HomeScreenFirebaseState extends State<HomeScreenFirebase> {
                       context,
                       MaterialPageRoute(
                         builder: (context) => const RapportScreen(),
+                      ),
+                    );
+                  } else if (value == 'ia_simple') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AIChatScreen(),
+                      ),
+                    );
+                  } else if (value == 'ia_firebase') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const AIFirebaseChatScreen(),
                       ),
                     );
                   } else if (value == 'compte') {
@@ -188,6 +214,46 @@ class _HomeScreenFirebaseState extends State<HomeScreenFirebase> {
                           ],
                         ),
                       ),
+                    PopupMenuItem<String>(
+                      value: 'ia_simple',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.smart_toy_rounded,
+                            color: AppColors.primary,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'IA - Chat Simple',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    PopupMenuItem<String>(
+                      value: 'ia_firebase',
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.cloud_rounded,
+                            color: AppColors.primary,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 12),
+                          const Text(
+                            'IA - Données Firebase',
+                            style: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     PopupMenuItem<String>(
                       value: 'compte',
                       child: Row(
@@ -791,6 +857,33 @@ class _HomeScreenFirebaseState extends State<HomeScreenFirebase> {
         'color': Colors.deepOrange,
         'isHSE': true,
       },
+      {
+        'title': 'Mise en oeuvre PGES',
+        'subtitle': 'Suivi de la mise en œuvre',
+        'icon': Icons.assignment_turned_in,
+        'color': Colors.blue,
+        'collection': 'mise_en_oeuvre_pges',
+        'formBuilder': (String pid, {String? documentId, Map<String, dynamic>? data}) =>
+            MiseEnOeuvrePGESFormV2(
+              projectId: pid,
+              documentId: documentId,
+              data: data,
+            ),
+      },
+      {
+        'title': 'Audit',
+        'subtitle': 'Audits & Inspections',
+        'icon': Icons.fact_check_rounded,
+        'color': Colors.cyan,
+        'collection': 'audit',
+        'isAudit': true,
+        'formBuilder': (String pid, {String? documentId, Map<String, dynamic>? data}) =>
+            AuditFirebaseForm(
+              projectId: pid,
+              documentId: documentId,
+              data: data,
+            ),
+      },
     ];
 
     return GridView.builder(
@@ -814,6 +907,8 @@ class _HomeScreenFirebaseState extends State<HomeScreenFirebase> {
           icon: module['icon'] as IconData,
           color: module['color'] as Color,
           onTap: () {
+            final isAudit = module['isAudit'] as bool? ?? false;
+            
             if (isHSE) {
               Navigator.push(
                 context,
@@ -824,6 +919,19 @@ class _HomeScreenFirebaseState extends State<HomeScreenFirebase> {
                     moduleIcon: Icons.assessment_rounded,
                     moduleColor: Colors.deepOrange,
                     isHSE: true,
+                  ),
+                ),
+              );
+            } else if (isAudit) {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => ProjectSelectorScreen(
+                    moduleTitle: 'Audit',
+                    collectionName: 'audit',
+                    moduleIcon: Icons.fact_check_rounded,
+                    moduleColor: Colors.cyan,
+                    isAudit: true,
                   ),
                 ),
               );
@@ -984,26 +1092,6 @@ class _HomeScreenFirebaseState extends State<HomeScreenFirebase> {
             'icon': Icons.assignment_rounded,
             'color': Colors.blue,
             'screen': ActivityReportScreen(
-              projectId: projectId,
-              projectName: projectName,
-            ),
-          },
-          {
-            'title': 'Rapport de Supervision',
-            'subtitle': 'Visites & Conformité',
-            'icon': Icons.supervised_user_circle_rounded,
-            'color': Colors.orange,
-            'screen': SupervisionReportScreen(
-              projectId: projectId,
-              projectName: projectName,
-            ),
-          },
-          {
-            'title': 'Rapport de Consultant',
-            'subtitle': 'Expertise & Analyse',
-            'icon': Icons.business_center_rounded,
-            'color': Colors.purple,
-            'screen': ConsultantReportScreen(
               projectId: projectId,
               projectName: projectName,
             ),

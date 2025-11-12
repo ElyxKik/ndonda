@@ -1,0 +1,183 @@
+=== GUIDE DU SYSTÈME D'HISTORIQUE IA ===
+
+## Vue d'ensemble
+Un système complet d'historique pour les deux pages IA (Chat Simple et Chat Firebase) avec:
+- Sauvegarde automatique des conversations dans Firestore
+- Modal pour afficher la liste des conversations
+- Page de détail pour lire une conversation complète
+- Suppression de conversations
+
+## Architecture
+
+### 1. Service: ConversationHistoryService
+Fichier: /lib/services/conversation_history_service.dart
+
+Responsabilités:
+- Créer une nouvelle conversation
+- Ajouter des messages à une conversation
+- Récupérer les conversations de l'utilisateur
+- Supprimer une conversation
+- Mettre à jour le titre d'une conversation
+- Générer un titre automatique
+
+Classes:
+- ConversationMessage: Représente un message (id, role, content, timestamp)
+- Conversation: Représente une conversation complète (id, userId, type, title, messages, createdAt, updatedAt)
+
+### 2. Modal: ConversationHistoryModal
+Fichier: /lib/widgets/conversation_history_modal.dart
+
+Affiche:
+- Liste de toutes les conversations de l'utilisateur
+- Filtrées par type (simple ou firebase)
+- Triées par date de modification (plus récente en premier)
+- Chaque item affiche:
+  - Titre de la conversation
+  - Date de création
+  - Nombre de messages
+  - Bouton pour supprimer
+
+Fonctionnalités:
+- Clic sur une conversation → ouvre la page de détail
+- Bouton menu pour supprimer une conversation
+- Confirmation avant suppression
+
+### 3. Page de Détail: ConversationDetailScreen
+Fichier: /lib/screens/conversation_detail_screen.dart
+
+Affiche:
+- Titre de la conversation
+- Nombre total de messages
+- Tous les messages avec:
+  - Contenu
+  - Heure
+  - Icône (utilisateur/assistant)
+  - Couleur différente selon le rôle
+
+### 4. Intégration dans les Pages IA
+
+#### ai_chat_screen.dart (Chat Simple)
+- Bouton historique dans l'AppBar (icône history_rounded)
+- Ouvre le modal avec chatType: 'simple'
+- Sauvegarde automatique des messages lors de l'envoi
+
+#### ai_firebase_chat_screen.dart (Chat Firebase)
+- Bouton historique dans l'AppBar (icône history_rounded)
+- Ouvre le modal avec chatType: 'firebase'
+- Sauvegarde automatique des messages lors de l'envoi
+
+### 5. Collection Firestore: ai_conversations
+
+Schéma:
+```
+ai_conversations/{conversationId}
+├── id: string (UUID)
+├── userId: string (UID de l'utilisateur)
+├── type: string ('simple' ou 'firebase')
+├── title: string (titre de la conversation)
+├── messages: array
+│   └── {
+│       ├── id: string (UUID)
+│       ├── role: string ('user' ou 'assistant')
+│       ├── content: string (contenu du message)
+│       └── timestamp: timestamp
+│   }
+├── createdAt: timestamp
+├── updatedAt: timestamp
+└── messageCount: number (nombre de messages)
+```
+
+Règles Firestore:
+```
+match /ai_conversations/{conversationId} {
+  allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+  allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+  allow update, delete: if isSignedIn() && resource.data.userId == request.auth.uid;
+}
+```
+
+## Flux de Fonctionnement
+
+### Création d'une Conversation
+1. Utilisateur envoie le premier message
+2. _sendMessage() crée une conversation avec:
+   - type: 'simple' ou 'firebase'
+   - title: généré automatiquement du premier message
+3. _currentConversationId est stocké
+4. Les messages suivants sont ajoutés à cette conversation
+
+### Sauvegarde d'un Message
+1. Utilisateur envoie un message
+2. Message utilisateur sauvegardé dans Firestore
+3. Réponse de l'IA générée
+4. Message assistant sauvegardé dans Firestore
+5. updatedAt et messageCount mis à jour
+
+### Affichage de l'Historique
+1. Utilisateur clique sur le bouton historique
+2. Modal s'ouvre et charge les conversations
+3. Conversations filtrées par type et triées par date
+4. Utilisateur clique sur une conversation
+5. Page de détail affiche tous les messages
+
+### Suppression d'une Conversation
+1. Utilisateur clique sur le menu d'une conversation
+2. Sélectionne "Supprimer"
+3. Confirmation demandée
+4. Conversation supprimée de Firestore
+5. Liste mise à jour
+
+## Utilisation
+
+### Dans une Page IA
+```dart
+// Ajouter les imports
+import '../services/conversation_history_service.dart';
+import '../widgets/conversation_history_modal.dart';
+
+// Initialiser le service
+final ConversationHistoryService _historyService = ConversationHistoryService();
+
+// Créer une conversation au premier message
+final title = _historyService.generateTitle(text);
+_currentConversationId = await _historyService.createConversation(
+  type: 'simple', // ou 'firebase'
+  title: title,
+);
+
+// Ajouter un message
+await _historyService.addMessage(
+  conversationId: _currentConversationId!,
+  role: 'user', // ou 'assistant'
+  content: text,
+);
+
+// Ouvrir le modal
+showDialog(
+  context: context,
+  builder: (context) => const ConversationHistoryModal(chatType: 'simple'),
+);
+```
+
+## Dépendances
+- cloud_firestore: Pour Firestore
+- firebase_auth: Pour l'authentification
+- uuid: Pour générer les IDs uniques
+
+## Logs
+- ✅ Conversation créée: [ID]
+- ✅ Message ajouté à la conversation
+- ✅ Conversation supprimée
+- ✅ Titre mis à jour
+- ❌ Erreur création conversation: [erreur]
+- ❌ Erreur ajout message: [erreur]
+- ❌ Erreur suppression conversation: [erreur]
+
+## Prochaines Améliorations Possibles
+1. Recherche dans l'historique
+2. Export des conversations (PDF, JSON)
+3. Partage de conversations
+4. Archivage de conversations
+5. Statistiques (nombre de conversations, messages par jour, etc.)
+6. Édition du titre d'une conversation
+7. Favoris/épinglage de conversations

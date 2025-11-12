@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/activity_report.dart';
 import '../../utils/constants.dart';
 import 'package:intl/intl.dart';
@@ -253,6 +252,8 @@ class _ActivityReportScreenState extends State<ActivityReportScreen> {
     showDialog(
       context: context,
       builder: (context) => Dialog(
+        backgroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         child: Container(
           constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
           child: Column(
@@ -269,6 +270,15 @@ class _ActivityReportScreenState extends State<ActivityReportScreen> {
                       Navigator.pop(context);
                       _editReport(report);
                     },
+                    tooltip: 'Modifier',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete),
+                    onPressed: () {
+                      Navigator.pop(context);
+                      _deleteReport(report);
+                    },
+                    tooltip: 'Supprimer',
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
@@ -378,9 +388,50 @@ class _ActivityReportScreenState extends State<ActivityReportScreen> {
     // TODO: Implémenter l'édition de rapport
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Fonctionnalité d\'édition en cours de développement'),
+        content: Text('Édition du rapport en cours de développement'),
         backgroundColor: AppColors.primary,
       ),
     );
+  }
+
+  Future<void> _deleteReport(ActivityReport report) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmer la suppression'),
+        content: const Text('Êtes-vous sûr de vouloir supprimer ce rapport ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Annuler'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await _firestore.collection('activityReports').doc(report.id).delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Rapport supprimé'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Erreur: $e'), backgroundColor: Colors.red),
+          );
+        }
+      }
+    }
   }
 }

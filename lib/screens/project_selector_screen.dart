@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'firebase_forms/firebase_list_screen.dart';
 import 'hse_indicators_list_screen.dart';
+import 'audit_list_screen.dart';
 
 class ProjectSelectorScreen extends StatelessWidget {
   final String moduleTitle;
@@ -11,6 +12,7 @@ class ProjectSelectorScreen extends StatelessWidget {
   final Color moduleColor;
   final Widget Function(String, {String? documentId, Map<String, dynamic>? data})? formBuilder;
   final bool isHSE;
+  final bool isAudit;
 
   const ProjectSelectorScreen({
     super.key,
@@ -20,6 +22,7 @@ class ProjectSelectorScreen extends StatelessWidget {
     required this.moduleColor,
     this.formBuilder,
     this.isHSE = false,
+    this.isAudit = false,
   });
 
   @override
@@ -186,6 +189,16 @@ class ProjectSelectorScreen extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                           builder: (context) => HSEIndicatorsListScreen(
+                            projectId: project.id,
+                            projectName: nom,
+                          ),
+                        ),
+                      );
+                    } else if (isAudit) {
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => AuditListScreen(
                             projectId: project.id,
                             projectName: nom,
                           ),

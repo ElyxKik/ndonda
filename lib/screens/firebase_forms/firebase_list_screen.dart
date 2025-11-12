@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import '../../services/firebase_service.dart';
 import '../../providers/app_provider.dart';
@@ -134,7 +135,7 @@ class _FirebaseListScreenState extends State<FirebaseListScreen> {
           final canCreate = provider.canPerformAction('create');
           
           if (!canCreate) {
-            return const SizedBox.shrink(); // Masquer le bouton si pas de permission
+            return const SizedBox.shrink();
           }
           
           return FloatingActionButton.extended(
@@ -159,13 +160,34 @@ class _FirebaseListScreenState extends State<FirebaseListScreen> {
   }
 
   Widget _buildListItem(BuildContext context, String documentId, Map<String, dynamic> data) {
-    final date = data['date'] != null 
-        ? DateTime.parse(data['date'])
-        : data['dateOuverture'] != null
-            ? DateTime.parse(data['dateOuverture'])
-            : data['createdAt'] != null
-                ? DateTime.parse(data['createdAt'])
-                : DateTime.now();
+    DateTime date = DateTime.now();
+    
+    // Fonction helper pour convertir Timestamp ou String en DateTime
+    DateTime? _parseDate(dynamic value) {
+      if (value == null) return null;
+      if (value is String) {
+        try {
+          return DateTime.parse(value);
+        } catch (e) {
+          return null;
+        }
+      }
+      // Gérer les Timestamps Firestore
+      if (value.runtimeType.toString().contains('Timestamp')) {
+        try {
+          return (value as dynamic).toDate();
+        } catch (e) {
+          return null;
+        }
+      }
+      return null;
+    }
+    
+    // Essayer de récupérer la date dans cet ordre
+    date = _parseDate(data['date']) 
+        ?? _parseDate(data['dateOuverture'])
+        ?? _parseDate(data['createdAt'])
+        ?? DateTime.now();
 
     String title = '';
     String subtitle = '';
@@ -208,6 +230,19 @@ class _FirebaseListScreenState extends State<FirebaseListScreen> {
         title = 'Relevé N°${data['numero'] ?? 0}';
         subtitle = 'Total: ${data['total'] ?? 0} personnes';
         break;
+      case 'mise_en_oeuvre_pges':
+        title = data['actionPrise'] ?? 'Action PGES';
+        subtitle = 'Réalisé: ${data['realise'] ?? 'Non'}';
+        statusColor = data['realise'] == 'Oui' ? Colors.green : Colors.orange;
+        break;
+      case 'audit':
+        final statut = data['statut'] ?? 'N/A';
+        final mois = data['mois'] ?? '';
+        final zone = data['zone'] ?? '';
+        title = 'Audit ${statut.toUpperCase()}';
+        subtitle = mois.isNotEmpty ? '$mois${zone.isNotEmpty ? ' - $zone' : ''}' : zone;
+        statusColor = _getAuditStatutColor(statut);
+        break;
     }
 
     return Card(
@@ -240,17 +275,25 @@ class _FirebaseListScreenState extends State<FirebaseListScreen> {
         ),
         trailing: Consumer<AppProvider>(
           builder: (context, provider, child) {
-            final canUpdate = provider.canPerformAction('update');
-            final canDelete = provider.canPerformAction('delete');
-            
-            // Si aucune permission, ne pas afficher le menu
-            if (!canUpdate && !canDelete) {
-              return const SizedBox.shrink();
-            }
+            // Vérifier si l'utilisateur est admin
+            final provider = Provider.of<AppProvider>(context, listen: false);
+            final canModify = provider.canPerformAction('update');
             
             return PopupMenuButton(
               itemBuilder: (context) => [
-                if (canUpdate)
+                // Bouton Voir pour tous les utilisateurs
+                const PopupMenuItem(
+                  value: 'view',
+                  child: Row(
+                    children: [
+                      Icon(Icons.visibility, size: 20),
+                      SizedBox(width: 8),
+                      Text('Voir'),
+                    ],
+                  ),
+                ),
+                // Boutons Modifier et Supprimer uniquement pour les admins
+                if (canModify)
                   const PopupMenuItem(
                     value: 'edit',
                     child: Row(
@@ -261,7 +304,7 @@ class _FirebaseListScreenState extends State<FirebaseListScreen> {
                       ],
                     ),
                   ),
-                if (canDelete)
+                if (canModify)
                   const PopupMenuItem(
                     value: 'delete',
                     child: Row(
@@ -274,7 +317,10 @@ class _FirebaseListScreenState extends State<FirebaseListScreen> {
                   ),
               ],
               onSelected: (value) async {
-                if (value == 'edit' && canUpdate) {
+                if (value == 'view') {
+                  // Afficher les détails du document
+                  _showDocumentDetails(context, documentId, data, title);
+                } else if (value == 'edit' && canModify) {
                   final result = await Navigator.push(
                     context,
                     MaterialPageRoute(
@@ -288,7 +334,7 @@ class _FirebaseListScreenState extends State<FirebaseListScreen> {
                   if (result == true && mounted) {
                     setState(() {});
                   }
-                } else if (value == 'delete' && canDelete) {
+                } else if (value == 'delete' && canModify) {
                   _confirmDelete(context, documentId, title);
                 }
               },
@@ -297,19 +343,15 @@ class _FirebaseListScreenState extends State<FirebaseListScreen> {
         ),
         onTap: () async {
           final provider = Provider.of<AppProvider>(context, listen: false);
-          final canUpdate = provider.canPerformAction('update');
+          final canModify = provider.canPerformAction('update');
           
-          // Les visiteurs ne peuvent pas ouvrir le formulaire de modification
-          if (!canUpdate) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text('Vous n\'avez pas la permission de modifier'),
-                backgroundColor: Colors.orange,
-              ),
-            );
+          // Si l'utilisateur n'est pas admin, afficher seulement les détails
+          if (!canModify) {
+            _showDocumentDetails(context, documentId, data, title);
             return;
           }
           
+          // Si c'est un admin, ouvrir le formulaire de modification
           final result = await Navigator.push(
             context,
             MaterialPageRoute(
@@ -404,6 +446,368 @@ class _FirebaseListScreenState extends State<FirebaseListScreen> {
           );
         }
       }
+    }
+  }
+
+  void _showDocumentDetails(BuildContext context, String documentId, Map<String, dynamic> data, String title) {
+    // Cas spécial pour la collection "audit"
+    if (widget.collectionName == 'audit') {
+      _showAuditDetails(context, data);
+      return;
+    }
+
+    // Cas spécial pour la collection "mise_en_oeuvre_pges"
+    if (widget.collectionName == 'mise_en_oeuvre_pges') {
+      _showPgesDetails(context, data);
+      return;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...data.entries.map((entry) {
+                final key = entry.key;
+                final value = entry.value;
+                
+                // Ignorer les champs non affichables
+                if (key == 'photos' || key == 'projectId' || key == 'createdBy') {
+                  return const SizedBox.shrink();
+                }
+                
+                String displayValue = '';
+                if (value is List) {
+                  displayValue = value.join(', ');
+                } else if (value is Map) {
+                  displayValue = value.toString();
+                } else {
+                  displayValue = value.toString();
+                }
+                
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        key,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        displayValue,
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                );
+              }).toList(),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAuditDetails(BuildContext context, Map<String, dynamic> data) {
+    final statut = data['statut'] ?? 'N/A';
+    final responsable = data['responsableHSE'] ?? 'N/A';
+    final mois = data['mois'] ?? 'N/A';
+    final zone = data['zone'] ?? 'N/A';
+    final observations = data['observations'] ?? '';
+    
+    final envIndicators = data['environmentalIndicators'] as Map<String, dynamic>? ?? {};
+    final socialIndicators = data['socialIndicators'] as Map<String, dynamic>? ?? {};
+    final quantIndicators = data['quantitativeIndicators'] as Map<String, dynamic>? ?? {};
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Détails de l\'Audit'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Informations générales
+              _buildDetailSection('Informations Générales', [
+                _buildDetailRow('Responsable HSE', responsable),
+                _buildDetailRow('Mois', mois),
+                _buildDetailRow('Zone', zone),
+                _buildDetailRow('Statut', statut.toUpperCase(), 
+                  color: _getAuditStatutColor(statut)),
+              ]),
+              
+              const SizedBox(height: 16),
+              
+              // Indicateurs environnementaux
+              if (envIndicators.isNotEmpty) ...[
+                _buildDetailSection('Indicateurs Environnementaux', 
+                  envIndicators.entries.map((e) => 
+                    _buildDetailRow(e.key, e.value.toString())).toList()),
+                const SizedBox(height: 16),
+              ],
+              
+              // Indicateurs sociaux
+              if (socialIndicators.isNotEmpty) ...[
+                _buildDetailSection('Indicateurs Sociaux', 
+                  socialIndicators.entries.map((e) => 
+                    _buildDetailRow(e.key, e.value.toString())).toList()),
+                const SizedBox(height: 16),
+              ],
+              
+              // Indicateurs quantitatifs
+              if (quantIndicators.isNotEmpty) ...[
+                _buildDetailSection('Indicateurs Quantitatifs', 
+                  quantIndicators.entries.map((e) => 
+                    _buildDetailRow(e.key, e.value.toString())).toList()),
+                const SizedBox(height: 16),
+              ],
+              
+              // Observations
+              if (observations.isNotEmpty) ...[
+                const Text(
+                  'Observations',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(observations, style: const TextStyle(fontSize: 13)),
+              ],
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailSection(String title, List<Widget> children) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 14,
+          ),
+        ),
+        const SizedBox(height: 8),
+        ...children,
+      ],
+    );
+  }
+
+  Widget _buildDetailRow(String label, String value, {Color? color}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 2,
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: Colors.grey,
+              ),
+            ),
+          ),
+          Expanded(
+            flex: 3,
+            child: Text(
+              value,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+                color: color,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getAuditStatutColor(String statut) {
+    switch (statut.toLowerCase()) {
+      case 'interne':
+        return Colors.blue;
+      case 'externe':
+        return Colors.purple;
+      case 'supervision':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  void _showPgesDetails(BuildContext context, Map<String, dynamic> data) {
+    final indicators = data['indicators'] as List? ?? [];
+    
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Détails Mise en oeuvre PGES'),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Informations générales
+              if (data['createdAt'] != null) ...[
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Date de création',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        _formatTimestamp(data['createdAt']),
+                        style: const TextStyle(fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              
+              // Indicateurs
+              const Padding(
+                padding: EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'Indicateurs PGES',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              
+              if (indicators.isEmpty)
+                const Text('Aucun indicateur')
+              else
+                ...indicators.map((indicator) {
+                  final name = indicator['name'] ?? '';
+                  final realise = indicator['realise'] ?? 'Non';
+                  final actionPrise = indicator['actionPrise'] ?? '';
+                  
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey[300]!),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            name,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Text(
+                                'Réalisé: ',
+                                style: TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: realise == 'Oui' ? Colors.green[100] : Colors.orange[100],
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  realise,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: realise == 'Oui' ? Colors.green[700] : Colors.orange[700],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (actionPrise.isNotEmpty) ...[
+                            const SizedBox(height: 8),
+                            const Text(
+                              'Action prise:',
+                              style: TextStyle(fontSize: 12, color: Colors.grey),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              actionPrise,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  );
+                }).toList(),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Fermer'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatTimestamp(dynamic timestamp) {
+    try {
+      DateTime date;
+      if (timestamp is String) {
+        date = DateTime.parse(timestamp);
+      } else if (timestamp.runtimeType.toString().contains('Timestamp')) {
+        date = (timestamp as dynamic).toDate();
+      } else {
+        return 'N/A';
+      }
+      return '${date.day}/${date.month}/${date.year} à ${date.hour}:${date.minute.toString().padLeft(2, '0')}';
+    } catch (e) {
+      return 'N/A';
     }
   }
 }

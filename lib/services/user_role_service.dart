@@ -13,26 +13,33 @@ class UserRoleService {
   // Récupérer le rôle d'un utilisateur
   Future<UserRole> getUserRole(String userId) async {
     try {
+      print('📖 UserRoleService: Récupération du document users/$userId');
       final doc = await _firestore.collection('users').doc(userId).get();
       
       if (!doc.exists) {
+        print('⚠️ UserRoleService: Document n\'existe pas, création avec rôle visiteur');
         // Si l'utilisateur n'existe pas, créer avec rôle visiteur par défaut
         await setUserRole(userId, UserRole.visiteur);
         return UserRole.visiteur;
       }
 
       final data = doc.data();
+      print('📄 UserRoleService: Données du document: $data');
       final roleString = data?['role'] as String?;
+      print('🔑 UserRoleService: Valeur du champ role: $roleString');
       
       if (roleString == null) {
+        print('⚠️ UserRoleService: Champ role null, définition à visiteur');
         // Si pas de rôle défini, mettre visiteur par défaut
         await setUserRole(userId, UserRole.visiteur);
         return UserRole.visiteur;
       }
 
-      return UserRole.fromString(roleString);
+      final role = UserRole.fromString(roleString);
+      print('✅ UserRoleService: Rôle converti: ${role.name}');
+      return role;
     } catch (e) {
-      print('Erreur lors de la récupération du rôle: $e');
+      print('❌ UserRoleService: Erreur lors de la récupération du rôle: $e');
       return UserRole.visiteur; // Par défaut en cas d'erreur
     }
   }

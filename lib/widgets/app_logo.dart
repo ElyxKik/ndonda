@@ -53,7 +53,7 @@ class AppLogo extends StatelessWidget {
             ),
           ),
           Text(
-            'Gestion Environnementale',
+            'Sauvegarde Environnementale',
             style: TextStyle(
               fontSize: size * 0.15,
               color: Colors.grey[600],

@@ -85,7 +85,7 @@ class UserPermissions {
 
   // Gestion des projets
   bool get canManageProjects {
-    return role == UserRole.admin;
+    return role == UserRole.admin || role == UserRole.consultant;
   }
 
   // Gestion des utilisateurs

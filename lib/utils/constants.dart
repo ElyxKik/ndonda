@@ -16,7 +16,7 @@ class AppColors {
 
 class AppConstants {
   static const String appName = 'ENVIROX';
-  static const String appSubtitle = 'Gestion Environnementale';
+  static const String appSubtitle = 'Sauvegarde Environnementale';
   
   // Report Types
   static const String reportWeekly = 'Hebdomadaire';
@@ -167,6 +167,13 @@ class AppModules {
       description: 'Environnement, Social, Gouvernance',
       icon: Icons.analytics,
       color: Color(0xFF512DA8),
+    ),
+    ModuleInfo(
+      id: 'mise_en_oeuvre_pges',
+      title: 'Mise en oeuvre PGES',
+      description: 'Suivi de la mise en œuvre du PGES',
+      icon: Icons.assignment_turned_in,
+      color: Color(0xFF1565C0),
     ),
   ];
 }

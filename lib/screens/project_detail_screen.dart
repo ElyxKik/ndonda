@@ -401,7 +401,7 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
       ('incidents', 'Incidents', Icons.warning_amber, Colors.orange),
       ('equipements', 'Equipements', Icons.build, Colors.blue),
       ('dechets', 'Dechets', Icons.delete, Colors.green),
-      ('sensibilisation', 'Sensibilisation', Icons.campaign, Colors.purple),
+      ('sensibilisations', 'Sensibilisation', Icons.campaign, Colors.purple),
       ('contentieux', 'Contentieux', Icons.gavel, Colors.red),
       ('evenementChantier', 'Evenements', Icons.event_note, Colors.indigo),
       ('personnel', 'Personnel', Icons.groups, Colors.teal),
@@ -424,9 +424,8 @@ class _ProjectDetailScreenState extends State<ProjectDetailScreen> {
           final (collectionName, label, icon, color) = collections[index];
           return StreamBuilder<QuerySnapshot>(
             stream: _firestore
-                .collection('projects')
-                .doc(widget.projectId)
                 .collection(collectionName)
+                .where('projectId', isEqualTo: widget.projectId)
                 .snapshots(),
             builder: (context, snapshot) {
               final count = snapshot.hasData ? snapshot.data!.docs.length : 0;

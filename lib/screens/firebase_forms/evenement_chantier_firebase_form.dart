@@ -34,6 +34,7 @@ class _EvenementChantierFirebaseFormState
   late TextEditingController _mesureController;
 
   bool _isLoading = false;
+  String _etatMiseEnOeuvre = 'Satisfaisant'; // Satisfaisant ou Insatisfaisant
 
   @override
   void initState() {
@@ -57,6 +58,7 @@ class _EvenementChantierFirebaseFormState
     _composantController.text = data['composant'] ?? '';
     _constatController.text = data['constat'] ?? '';
     _mesureController.text = data['mesure'] ?? '';
+    _etatMiseEnOeuvre = data['etatMiseEnOeuvre'] ?? 'Satisfaisant';
   }
 
   @override
@@ -83,6 +85,7 @@ class _EvenementChantierFirebaseFormState
         'composant': _composantController.text.trim(),
         'constat': _constatController.text.trim(),
         'mesure': _mesureController.text.trim(),
+        'etatMiseEnOeuvre': _etatMiseEnOeuvre,
         'updatedAt': now.toIso8601String(),
         'createdBy': _auth.currentUserId ?? 'anonymous',
       };
@@ -229,6 +232,132 @@ class _EvenementChantierFirebaseFormState
                 }
                 return null;
               },
+            ),
+            const SizedBox(height: 24),
+
+            // État de mise en œuvre des mesures
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.blue.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.withOpacity(0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'État de mise en œuvre des mesures',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF263238),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _etatMiseEnOeuvre = 'Satisfaisant';
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: _etatMiseEnOeuvre == 'Satisfaisant'
+                                  ? Colors.green.withOpacity(0.2)
+                                  : Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _etatMiseEnOeuvre == 'Satisfaisant'
+                                    ? Colors.green
+                                    : Colors.grey.withOpacity(0.3),
+                                width: 2,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Radio<String>(
+                                  value: 'Satisfaisant',
+                                  groupValue: _etatMiseEnOeuvre,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _etatMiseEnOeuvre = value!;
+                                    });
+                                  },
+                                  activeColor: Colors.green,
+                                ),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    'Satisfaisant',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              _etatMiseEnOeuvre = 'Insatisfaisant';
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: _etatMiseEnOeuvre == 'Insatisfaisant'
+                                  ? Colors.red.withOpacity(0.2)
+                                  : Colors.grey.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: _etatMiseEnOeuvre == 'Insatisfaisant'
+                                    ? Colors.red
+                                    : Colors.grey.withOpacity(0.3),
+                                width: 2,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Radio<String>(
+                                  value: 'Insatisfaisant',
+                                  groupValue: _etatMiseEnOeuvre,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _etatMiseEnOeuvre = value!;
+                                    });
+                                  },
+                                  activeColor: Colors.red,
+                                ),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    'Insatisfaisant',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 24),
 
